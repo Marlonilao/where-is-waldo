@@ -27,12 +27,12 @@ model Character {
   y2      Float
 }
 
-// A Game with a name is a Score.
+// A Game with a playerName is a Score.
 model Game {
   id         String    @id @default(uuid())
   scene      Scene     @relation(fields: [sceneId], references: [id])
   sceneId    Int
   startedAt  DateTime
   finishedAt DateTime?
-  name       String?
+  playerName String?
 }
