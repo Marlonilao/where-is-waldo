@@ -1,0 +1,27 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "vitest run",
+    "postinstall": "prisma generate"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "dotenv": "^18.0.8",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.10.1",
+    "supertest": "^7.1.4",
+    "vitest": "^5.0.5"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  }
+}
