@@ -1,0 +1,7 @@
+# AI workflow files: local only, never committed
+.claude/
+.scratch/
+CLAUDE.md
+CONTEXT.md
+docs/agents/
+docs/adr/
