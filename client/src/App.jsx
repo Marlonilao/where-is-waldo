@@ -6,6 +6,7 @@ const sceneId = 1;
 export default function App() {
   const [game, setGame] = useState(null);
   const [targetingBox, setTargetingBox] = useState(null);
+  const [message, setMessage] = useState(null);
   const sceneRef = useRef(null);
 
   useEffect(() => {
@@ -31,7 +32,29 @@ export default function App() {
     setTargetingBox({
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
     });
+  }
+
+  async function guess(character) {
+    try {
+      const res = await fetch(`/games/${game.id}/guesses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          characterId: character.id,
+          x: targetingBox.x / targetingBox.width,
+          y: targetingBox.y / targetingBox.height,
+        }),
+      });
+      if (!res.ok) throw new Error(`Guess failed: ${res.status}`);
+      const { correct } = await res.json();
+      setMessage(correct ? `You found ${character.name}!` : "Try again!");
+    } catch {
+      setMessage("Something went wrong. Please try again.");
+    }
+    setTargetingBox(null);
   }
 
   return (
@@ -44,6 +67,7 @@ export default function App() {
               <li key={character.id}>{character.name}</li>
             ))}
           </ul>
+          {message && <p role="status">{message}</p>}
           <div className={styles.sceneArea} ref={sceneRef}>
             <img
               className={styles.scene}
@@ -60,7 +84,11 @@ export default function App() {
                 <div className={styles.box} />
                 <ul className={styles.menu} role="menu" aria-label="Characters">
                   {game.characters.map((character) => (
-                    <li key={character.id} role="menuitem">
+                    <li
+                      key={character.id}
+                      role="menuitem"
+                      onClick={() => guess(character)}
+                    >
                       {character.name}
                     </li>
                   ))}
