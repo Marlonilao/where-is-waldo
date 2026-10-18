@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import App from "../src/App.jsx";
 import { stubFetch } from "./fetchStub.js";
@@ -183,6 +183,48 @@ test("a click inside a found outline opens no Targeting box", async () => {
   fireEvent.click(screen.getByRole("img", { name: "Scene" }), {
     clientX: 130,
     clientY: 120,
+  });
+
+  expect(screen.queryByLabelText("Targeting box")).toBeNull();
+});
+
+test("a clock counts up from Start", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+  await startGame();
+  const clock = screen.getByRole("timer");
+  expect(clock.textContent).toBe("0.0s");
+
+  act(() => vi.advanceTimersByTime(12300));
+
+  expect(clock.textContent).toBe("12.3s");
+});
+
+test("finishing stops the clock and shows the server's time", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
+  await guess(
+    { body: { correct: true, hitBox, finished: true, timeMs: 61234 } },
+    "Waldo"
+  );
+
+  expect((await screen.findByRole("status")).textContent).toBe(
+    "You found everyone in 61.2s!"
+  );
+  const clock = screen.getByRole("timer");
+  expect(clock.textContent).toBe("61.2s");
+  act(() => vi.advanceTimersByTime(5000));
+  expect(clock.textContent).toBe("61.2s");
+});
+
+test("the Scene can't be clicked once the Game is finished", async () => {
+  await guess(
+    { body: { correct: true, hitBox, finished: true, timeMs: 61234 } },
+    "Waldo"
+  );
+  await screen.findByRole("status");
+
+  fireEvent.click(screen.getByRole("img", { name: "Scene" }), {
+    clientX: 310,
+    clientY: 170,
   });
 
   expect(screen.queryByLabelText("Targeting box")).toBeNull();

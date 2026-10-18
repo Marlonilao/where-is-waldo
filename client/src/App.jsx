@@ -3,12 +3,25 @@ import styles from "./App.module.css";
 
 const sceneId = 1;
 
+function formatTime(ms) {
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
 export default function App() {
   const [game, setGame] = useState(null);
   const [targetingBox, setTargetingBox] = useState(null);
   const [message, setMessage] = useState(null);
   const [found, setFound] = useState({});
+  const [elapsed, setElapsed] = useState(0);
+  const [timeMs, setTimeMs] = useState(null);
   const sceneRef = useRef(null);
+
+  useEffect(() => {
+    if (!game || timeMs !== null) return;
+    const startedAt = Date.now();
+    const id = setInterval(() => setElapsed(Date.now() - startedAt), 100);
+    return () => clearInterval(id);
+  }, [game, timeMs]);
 
   useEffect(() => {
     if (!targetingBox) return;
@@ -29,6 +42,7 @@ export default function App() {
   }
 
   function aim(event) {
+    if (timeMs !== null) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -55,9 +69,14 @@ export default function App() {
         }),
       });
       if (!res.ok) throw new Error(`Guess failed: ${res.status}`);
-      const { correct, hitBox } = await res.json();
+      const { correct, hitBox, finished, timeMs: finalTimeMs } = await res.json();
       if (correct) setFound((found) => ({ ...found, [character.id]: hitBox }));
-      setMessage(correct ? `You found ${character.name}!` : "Try again!");
+      if (finished) {
+        setTimeMs(finalTimeMs);
+        setMessage(`You found everyone in ${formatTime(finalTimeMs)}!`);
+      } else {
+        setMessage(correct ? `You found ${character.name}!` : "Try again!");
+      }
     } catch {
       setMessage("Something went wrong. Please try again.");
     }
@@ -69,6 +88,7 @@ export default function App() {
       <h1>Where's Waldo?</h1>
       {game ? (
         <>
+          <p role="timer">{formatTime(timeMs ?? elapsed)}</p>
           <ul>
             {game.characters.map((character) => (
               <li key={character.id}>{character.name}</li>
