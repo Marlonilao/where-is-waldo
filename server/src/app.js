@@ -94,4 +94,23 @@ app.put("/games/:id/name", async (req, res) => {
   res.sendStatus(204);
 });
 
+app.get("/scenes/:id/leaderboard", async (req, res) => {
+  const sceneId = Number(req.params.id);
+  if (!Number.isInteger(sceneId)) return res.sendStatus(404);
+  const scene = await prisma.scene.findUnique({ where: { id: sceneId } });
+  if (!scene) return res.sendStatus(404);
+
+  // Prisma can't order by a computed time, so this one query is raw SQL.
+  const scores = await prisma.$queryRaw`
+    SELECT "playerName" AS name,
+      (EXTRACT(EPOCH FROM "finishedAt" - "startedAt") * 1000)::int AS "timeMs"
+    FROM "Game"
+    WHERE "sceneId" = ${sceneId}
+      AND "finishedAt" IS NOT NULL
+      AND "playerName" IS NOT NULL
+    ORDER BY "finishedAt" - "startedAt", "finishedAt"
+    LIMIT 10`;
+  res.json(scores);
+});
+
 export default app;
