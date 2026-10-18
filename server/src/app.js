@@ -74,4 +74,24 @@ app.post("/games/:id/guesses", async (req, res) => {
   });
 });
 
+app.put("/games/:id/name", async (req, res) => {
+  const game = await prisma.game.findUnique({ where: { id: req.params.id } });
+  if (!game) return res.sendStatus(404);
+  if (!game.finishedAt || game.playerName) return res.sendStatus(409);
+
+  const { name } = req.body ?? {};
+  const playerName = typeof name === "string" ? name.trim() : "";
+  if (playerName.length < 1 || playerName.length > 20) {
+    return res.sendStatus(400);
+  }
+
+  // Only one name may stick, even if two arrive at once.
+  const { count } = await prisma.game.updateMany({
+    where: { id: game.id, finishedAt: { not: null }, playerName: null },
+    data: { playerName },
+  });
+  if (count === 0) return res.sendStatus(409);
+  res.sendStatus(204);
+});
+
 export default app;
