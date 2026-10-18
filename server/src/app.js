@@ -24,4 +24,26 @@ app.post("/games", async (req, res) => {
   });
 });
 
+app.post("/games/:id/guesses", async (req, res) => {
+  const { characterId, x, y } = req.body ?? {};
+  const game = await prisma.game.findUnique({ where: { id: req.params.id } });
+  if (!game) return res.sendStatus(404);
+
+  const isFraction = (n) => typeof n === "number" && n >= 0 && n <= 1;
+  if (!Number.isInteger(characterId) || !isFraction(x) || !isFraction(y)) {
+    return res.sendStatus(400);
+  }
+  const character = await prisma.character.findFirst({
+    where: { id: characterId, sceneId: game.sceneId },
+  });
+  if (!character) return res.sendStatus(400);
+
+  const correct =
+    x >= character.x1 &&
+    x <= character.x2 &&
+    y >= character.y1 &&
+    y <= character.y2;
+  res.json({ correct });
+});
+
 export default app;
