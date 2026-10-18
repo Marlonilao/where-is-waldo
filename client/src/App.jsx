@@ -7,6 +7,7 @@ export default function App() {
   const [game, setGame] = useState(null);
   const [targetingBox, setTargetingBox] = useState(null);
   const [message, setMessage] = useState(null);
+  const [found, setFound] = useState({});
   const sceneRef = useRef(null);
 
   useEffect(() => {
@@ -29,12 +30,17 @@ export default function App() {
 
   function aim(event) {
     const rect = event.currentTarget.getBoundingClientRect();
-    setTargetingBox({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    });
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const inFound = Object.values(found).some(
+      (box) =>
+        x / rect.width >= box.x1 &&
+        x / rect.width <= box.x2 &&
+        y / rect.height >= box.y1 &&
+        y / rect.height <= box.y2
+    );
+    if (inFound) return;
+    setTargetingBox({ x, y, width: rect.width, height: rect.height });
   }
 
   async function guess(character) {
@@ -49,7 +55,8 @@ export default function App() {
         }),
       });
       if (!res.ok) throw new Error(`Guess failed: ${res.status}`);
-      const { correct } = await res.json();
+      const { correct, hitBox } = await res.json();
+      if (correct) setFound((found) => ({ ...found, [character.id]: hitBox }));
       setMessage(correct ? `You found ${character.name}!` : "Try again!");
     } catch {
       setMessage("Something went wrong. Please try again.");
@@ -75,6 +82,24 @@ export default function App() {
               alt="Scene"
               onClick={aim}
             />
+            {game.characters
+              .filter((character) => found[character.id])
+              .map((character) => {
+                const box = found[character.id];
+                return (
+                  <div
+                    key={character.id}
+                    className={styles.outline}
+                    style={{
+                      left: `${box.x1 * 100}%`,
+                      top: `${box.y1 * 100}%`,
+                      width: `${(box.x2 - box.x1) * 100}%`,
+                      height: `${(box.y2 - box.y1) * 100}%`,
+                    }}
+                    aria-label={`Found ${character.name}`}
+                  />
+                );
+              })}
             {targetingBox && (
               <div
                 className={styles.targetingBox}
@@ -87,9 +112,12 @@ export default function App() {
                     <li
                       key={character.id}
                       role="menuitem"
-                      onClick={() => guess(character)}
+                      {...(found[character.id]
+                        ? { "aria-disabled": "true", className: styles.found }
+                        : { onClick: () => guess(character) })}
                     >
                       {character.name}
+                      {found[character.id] && " ✓"}
                     </li>
                   ))}
                 </ul>

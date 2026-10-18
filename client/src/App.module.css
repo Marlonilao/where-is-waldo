@@ -44,3 +44,15 @@
   padding: 4px 12px;
   cursor: pointer;
 }
+
+.menu li.found {
+  color: #999;
+  cursor: default;
+}
+
+.outline {
+  position: absolute;
+  border: 3px solid limegreen;
+  box-sizing: border-box;
+  pointer-events: none;
+}

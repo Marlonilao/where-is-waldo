@@ -146,3 +146,44 @@ test("a failed request says something went wrong and closes the Targeting box an
   expect(screen.queryByLabelText("Targeting box")).toBeNull();
   expect(screen.queryByRole("menu")).toBeNull();
 });
+
+const hitBox = { x1: 0.25, y1: 0.25, x2: 0.5, y2: 0.75 };
+
+test("a correct Guess outlines the Hit box scaled to the image's on-screen size", async () => {
+  await guess({ body: { correct: true, hitBox } }, "Waldo");
+
+  const outline = await screen.findByLabelText("Found Waldo");
+  expect(outline.style.left).toBe("25%");
+  expect(outline.style.top).toBe("25%");
+  expect(outline.style.width).toBe("25%");
+  expect(outline.style.height).toBe("50%");
+});
+
+test("a found Character stays in the menu greyed out with a ✓ and can't be chosen", async () => {
+  const fetch = await guess({ body: { correct: true, hitBox } }, "Waldo");
+  await screen.findByLabelText("Found Waldo");
+
+  fireEvent.click(screen.getByRole("img", { name: "Scene" }), {
+    clientX: 310,
+    clientY: 170,
+  });
+  const found = screen.getByRole("menuitem", { name: "Waldo ✓" });
+  expect(found.getAttribute("aria-disabled")).toBe("true");
+  fireEvent.click(found);
+
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(screen.queryByLabelText("Targeting box")).not.toBeNull();
+});
+
+test("a click inside a found outline opens no Targeting box", async () => {
+  await guess({ body: { correct: true, hitBox } }, "Waldo");
+  await screen.findByLabelText("Found Waldo");
+
+  // 0.3, 0.5 of the 400x200 image at (10, 20) lies inside the Hit box
+  fireEvent.click(screen.getByRole("img", { name: "Scene" }), {
+    clientX: 130,
+    clientY: 120,
+  });
+
+  expect(screen.queryByLabelText("Targeting box")).toBeNull();
+});
