@@ -43,7 +43,14 @@ app.post("/games/:id/guesses", async (req, res) => {
     x <= character.x2 &&
     y >= character.y1 &&
     y <= character.y2;
-  res.json({ correct });
+  if (!correct) return res.json({ correct });
+
+  await prisma.foundCharacter.createMany({
+    data: { gameId: game.id, characterId: character.id },
+    skipDuplicates: true,
+  });
+  const { x1, y1, x2, y2 } = character;
+  res.json({ correct, hitBox: { x1, y1, x2, y2 } });
 });
 
 export default app;

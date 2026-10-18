@@ -15,16 +15,50 @@ function guess(body, id = gameId) {
   return request(app).post(`/games/${id}/guesses`).send(body);
 }
 
+const waldoHitBox = { x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.2 };
+
+function foundCharacterIds() {
+  return prisma.foundCharacter
+    .findMany({ where: { gameId }, orderBy: { characterId: "asc" } })
+    .then((rows) => rows.map((row) => row.characterId));
+}
+
 test("a Guess inside the Character's Hit box is correct", async () => {
   const res = await guess({ characterId: 1, x: 0.15, y: 0.15 }).expect(200);
 
-  expect(res.body).toEqual({ correct: true });
+  expect(res.body).toEqual({ correct: true, hitBox: waldoHitBox });
+});
+
+test("a correct Guess records the Character as found", async () => {
+  await guess({ characterId: 1, x: 0.15, y: 0.15 }).expect(200);
+
+  expect(await foundCharacterIds()).toEqual([1]);
+});
+
+test("a repeat correct Guess returns the Hit box and writes nothing", async () => {
+  await guess({ characterId: 1, x: 0.15, y: 0.15 }).expect(200);
+  const res = await guess({ characterId: 1, x: 0.12, y: 0.18 }).expect(200);
+
+  expect(res.body).toEqual({ correct: true, hitBox: waldoHitBox });
+  expect(await foundCharacterIds()).toEqual([1]);
+});
+
+test("a correct Guess returns only the guessed Character's Hit box", async () => {
+  await guess({ characterId: 1, x: 0.15, y: 0.15 }).expect(200);
+  const res = await guess({ characterId: 2, x: 0.55, y: 0.6 }).expect(200);
+
+  expect(res.body).toEqual({
+    correct: true,
+    hitBox: { x1: 0.5, y1: 0.5, x2: 0.6, y2: 0.7 },
+  });
+  expect(await foundCharacterIds()).toEqual([1, 2]);
 });
 
 test("a Guess outside the Character's Hit box is wrong", async () => {
   const res = await guess({ characterId: 1, x: 0.55, y: 0.6 }).expect(200);
 
   expect(res.body).toEqual({ correct: false });
+  expect(await foundCharacterIds()).toEqual([]);
 });
 
 test.each([
@@ -35,7 +69,7 @@ test.each([
 ])("a Guess exactly on the Hit box's %s is correct", async (_, x, y) => {
   const res = await guess({ characterId: 1, x, y }).expect(200);
 
-  expect(res.body).toEqual({ correct: true });
+  expect(res.body).toEqual({ correct: true, hitBox: waldoHitBox });
 });
 
 test("a Guess for an unknown Game returns 404", async () => {
