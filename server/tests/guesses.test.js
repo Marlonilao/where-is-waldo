@@ -1,5 +1,5 @@
 import request from "supertest";
-import { beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import app from "../src/app.js";
 import { prisma } from "../src/db.js";
 
@@ -11,11 +11,16 @@ beforeEach(async () => {
   gameId = res.body.id;
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 function guess(body, id = gameId) {
   return request(app).post(`/games/${id}/guesses`).send(body);
 }
 
 const waldoHitBox = { x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.2 };
+const wendaHitBox = { x1: 0.5, y1: 0.5, x2: 0.6, y2: 0.7 };
 
 function foundCharacterIds() {
   return prisma.foundCharacter
@@ -26,7 +31,11 @@ function foundCharacterIds() {
 test("a Guess inside the Character's Hit box is correct", async () => {
   const res = await guess({ characterId: 1, x: 0.15, y: 0.15 }).expect(200);
 
-  expect(res.body).toEqual({ correct: true, hitBox: waldoHitBox });
+  expect(res.body).toEqual({
+    correct: true,
+    hitBox: waldoHitBox,
+    finished: false,
+  });
 });
 
 test("a correct Guess records the Character as found", async () => {
@@ -39,7 +48,11 @@ test("a repeat correct Guess returns the Hit box and writes nothing", async () =
   await guess({ characterId: 1, x: 0.15, y: 0.15 }).expect(200);
   const res = await guess({ characterId: 1, x: 0.12, y: 0.18 }).expect(200);
 
-  expect(res.body).toEqual({ correct: true, hitBox: waldoHitBox });
+  expect(res.body).toEqual({
+    correct: true,
+    hitBox: waldoHitBox,
+    finished: false,
+  });
   expect(await foundCharacterIds()).toEqual([1]);
 });
 
@@ -49,7 +62,9 @@ test("a correct Guess returns only the guessed Character's Hit box", async () =>
 
   expect(res.body).toEqual({
     correct: true,
-    hitBox: { x1: 0.5, y1: 0.5, x2: 0.6, y2: 0.7 },
+    hitBox: wendaHitBox,
+    finished: true,
+    timeMs: expect.any(Number),
   });
   expect(await foundCharacterIds()).toEqual([1, 2]);
 });
@@ -69,7 +84,11 @@ test.each([
 ])("a Guess exactly on the Hit box's %s is correct", async (_, x, y) => {
   const res = await guess({ characterId: 1, x, y }).expect(200);
 
-  expect(res.body).toEqual({ correct: true, hitBox: waldoHitBox });
+  expect(res.body).toEqual({
+    correct: true,
+    hitBox: waldoHitBox,
+    finished: false,
+  });
 });
 
 test("a Guess for an unknown Game returns 404", async () => {
@@ -118,4 +137,47 @@ test.each([
 
 test("a Guess with no body returns 400", async () => {
   await request(app).post(`/games/${gameId}/guesses`).expect(400);
+});
+
+function finishedAt() {
+  return prisma.game
+    .findUnique({ where: { id: gameId } })
+    .then((game) => game.finishedAt);
+}
+
+async function finishGame() {
+  await guess({ characterId: 1, x: 0.15, y: 0.15 }).expect(200);
+  return guess({ characterId: 2, x: 0.55, y: 0.6 }).expect(200);
+}
+
+test("the Guess that finds the last Character finishes the Game with its time", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-18T12:00:00.000Z"));
+  await prisma.game.update({
+    where: { id: gameId },
+    data: { startedAt: new Date("2026-10-18T11:58:45.250Z") },
+  });
+
+  const res = await finishGame();
+
+  expect(res.body).toEqual({
+    correct: true,
+    hitBox: wendaHitBox,
+    finished: true,
+    timeMs: 74750,
+  });
+  expect(await finishedAt()).toEqual(new Date("2026-10-18T12:00:00.000Z"));
+});
+
+test.each([
+  ["a correct Guess", { characterId: 1, x: 0.15, y: 0.15 }],
+  ["a wrong Guess", { characterId: 1, x: 0.55, y: 0.6 }],
+  ["an invalid Guess", { characterId: 999, x: 0.15, y: 0.15 }],
+])("%s on a finished Game returns 409 and keeps finishedAt", async (_, body) => {
+  await finishGame();
+  const finishedAtBefore = await finishedAt();
+
+  await guess(body).expect(409);
+
+  expect(await finishedAt()).toEqual(finishedAtBefore);
 });

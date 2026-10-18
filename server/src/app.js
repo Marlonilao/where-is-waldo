@@ -28,6 +28,7 @@ app.post("/games/:id/guesses", async (req, res) => {
   const { characterId, x, y } = req.body ?? {};
   const game = await prisma.game.findUnique({ where: { id: req.params.id } });
   if (!game) return res.sendStatus(404);
+  if (game.finishedAt) return res.sendStatus(409);
 
   const isFraction = (n) => typeof n === "number" && n >= 0 && n <= 1;
   if (!Number.isInteger(characterId) || !isFraction(x) || !isFraction(y)) {
@@ -50,7 +51,27 @@ app.post("/games/:id/guesses", async (req, res) => {
     skipDuplicates: true,
   });
   const { x1, y1, x2, y2 } = character;
-  res.json({ correct, hitBox: { x1, y1, x2, y2 } });
+  const hitBox = { x1, y1, x2, y2 };
+
+  const [found, total] = await Promise.all([
+    prisma.foundCharacter.count({ where: { gameId: game.id } }),
+    prisma.character.count({ where: { sceneId: game.sceneId } }),
+  ]);
+  if (found < total) return res.json({ correct, hitBox, finished: false });
+
+  // Only one Guess may finish the Game, even if two arrive at once.
+  const finishedAt = new Date();
+  const { count } = await prisma.game.updateMany({
+    where: { id: game.id, finishedAt: null },
+    data: { finishedAt },
+  });
+  if (count === 0) return res.sendStatus(409);
+  res.json({
+    correct,
+    hitBox,
+    finished: true,
+    timeMs: finishedAt - game.startedAt,
+  });
 });
 
 export default app;
