@@ -121,36 +121,58 @@ export default function App() {
 
   return (
     <main className={styles.app}>
-      <h1>Where's Waldo?</h1>
+      <header className={styles.header}>
+        <h1 className={styles.title}>Where's Waldo?</h1>
+      </header>
       {game ? (
         <>
-          <p role="timer">{formatTime(timeMs ?? elapsed)}</p>
-          <ul>
-            {game.characters.map((character) => (
-              <li key={character.id}>{character.name}</li>
-            ))}
-          </ul>
-          {message && <p role="status">{message}</p>}
+          <div className={styles.hud}>
+            <p role="timer" className={styles.timer}>
+              {formatTime(timeMs ?? elapsed)}
+            </p>
+            <ul className={styles.characters}>
+              {game.characters.map((character) => (
+                <li
+                  key={character.id}
+                  className={found[character.id] ? styles.foundChip : styles.chip}
+                >
+                  <img className={styles.headshot} src={character.imageUrl} alt="" />
+                  {character.name}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {message && (
+            <p role="status" className={styles.status}>
+              {message}
+            </p>
+          )}
           {leaderboard ? (
-            <>
-              <h2>Leaderboard</h2>
-              <ol>
+            <section className={styles.card}>
+              <h2 className={styles.cardTitle}>Leaderboard</h2>
+              <ol className={styles.leaderboard}>
                 {leaderboard.map((score, i) => (
                   <li key={i}>
                     {score.name} {formatTime(score.timeMs)}
                   </li>
                 ))}
               </ol>
-              <button onClick={playAgain}>Play again</button>
-            </>
+              <button className={styles.button} onClick={playAgain}>
+                Play again
+              </button>
+            </section>
           ) : (
             timeMs !== null && (
-              <form onSubmit={saveName}>
-                <label>
-                  Name <input name="name" />
+              <form className={styles.card} onSubmit={saveName}>
+                <label className={styles.label}>
+                  Name <input className={styles.input} name="name" />
                 </label>
-                <button>Save</button>
-                {nameError && <p role="alert">{nameError}</p>}
+                <button className={styles.button}>Save</button>
+                {nameError && (
+                  <p role="alert" className={styles.error}>
+                    {nameError}
+                  </p>
+                )}
               </form>
             )
           )}
@@ -176,7 +198,12 @@ export default function App() {
                       height: `${(box.y2 - box.y1) * 100}%`,
                     }}
                     aria-label={`Found ${character.name}`}
-                  />
+                  >
+                    <span className={styles.foundTag}>
+                      <img className={styles.headshot} src={character.imageUrl} alt="" />
+                      {character.name} ✓
+                    </span>
+                  </div>
                 );
               })}
             {targetingBox && (
@@ -195,6 +222,7 @@ export default function App() {
                         ? { "aria-disabled": "true", className: styles.found }
                         : { onClick: () => guess(character) })}
                     >
+                      <img className={styles.headshot} src={character.imageUrl} alt="" />
                       {character.name}
                       {found[character.id] && " ✓"}
                     </li>
@@ -205,7 +233,14 @@ export default function App() {
           </div>
         </>
       ) : (
-        <button onClick={start}>Start</button>
+        <section className={styles.intro}>
+          <p className={styles.tagline}>
+            Find every Character hidden in the Scene as fast as you can.
+          </p>
+          <button className={styles.button} onClick={start}>
+            Start
+          </button>
+        </section>
       )}
     </main>
   );

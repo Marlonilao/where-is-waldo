@@ -19,6 +19,7 @@ model Scene {
 model Character {
   id           Int              @id @default(autoincrement())
   name         String
+  imageUrl     String
   scene        Scene            @relation(fields: [sceneId], references: [id])
   sceneId      Int
   x1           Float

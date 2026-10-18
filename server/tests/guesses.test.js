@@ -112,7 +112,7 @@ test("a Guess for a Character from another Scene returns 400", async () => {
       name: "Other Scene",
       imageUrl: "https://example.com/other-scene.png",
       characters: {
-        create: [{ name: "Odlaw", x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.2 }],
+        create: [{ name: "Odlaw", imageUrl: "https://example.com/odlaw.png", x1: 0.1, y1: 0.1, x2: 0.2, y2: 0.2 }],
       },
     },
     include: { characters: true },

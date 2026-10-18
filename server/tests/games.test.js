@@ -28,8 +28,8 @@ test("starting a Game returns what the player needs to play", async () => {
     ),
     imageUrl: "https://example.com/test-scene.png",
     characters: [
-      { id: 1, name: "Waldo" },
-      { id: 2, name: "Wenda" },
+      { id: 1, name: "Waldo", imageUrl: "https://example.com/waldo.png" },
+      { id: 2, name: "Wenda", imageUrl: "https://example.com/wenda.png" },
     ],
   });
 });

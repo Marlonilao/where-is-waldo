@@ -9,7 +9,7 @@ app.post("/games", async (req, res) => {
   const scene = await prisma.scene.findUnique({
     where: { id: req.body.sceneId },
     include: {
-      characters: { select: { id: true, name: true }, orderBy: { id: "asc" } },
+      characters: { select: { id: true, name: true, imageUrl: true }, orderBy: { id: "asc" } },
     },
   });
   if (!scene) return res.sendStatus(404);
