@@ -2,3 +2,9 @@
   font-family: system-ui, sans-serif;
   text-align: center;
 }
+
+.scene {
+  display: block;
+  width: 100%;
+  height: auto;
+}
