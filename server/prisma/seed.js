@@ -1,6 +1,12 @@
 import "dotenv/config";
 import { prisma } from "../src/db.js";
 
+// Runs on every deploy, so only seed an empty database.
+if ((await prisma.scene.count()) > 0) {
+  await prisma.$disconnect();
+  process.exit(0);
+}
+
 // Hit boxes measured by hand on the 2560x1600 beach picture.
 await prisma.scene.create({
   data: {

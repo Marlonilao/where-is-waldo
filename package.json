@@ -2,6 +2,7 @@
   "name": "where-is-waldo",
   "private": true,
   "scripts": {
+    "build": "npm ci --prefix client && npm run build --prefix client && npm ci --prefix server && cd server && npx prisma migrate deploy && npx prisma db seed",
     "start": "npm run build --prefix client && npm start --prefix server"
   }
 }
