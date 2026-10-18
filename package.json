@@ -1,0 +1,7 @@
+{
+  "name": "where-is-waldo",
+  "private": true,
+  "scripts": {
+    "start": "npm run build --prefix client && npm start --prefix server"
+  }
+}

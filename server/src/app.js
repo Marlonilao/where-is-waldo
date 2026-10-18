@@ -1,5 +1,10 @@
 import express from "express";
+import { fileURLToPath } from "node:url";
 import { prisma } from "./db.js";
+
+const clientDir =
+  process.env.CLIENT_DIR ??
+  fileURLToPath(new URL("../../client/dist", import.meta.url));
 
 const app = express();
 
@@ -111,6 +116,12 @@ app.get("/scenes/:id/leaderboard", async (req, res) => {
     ORDER BY "finishedAt" - "startedAt", "finishedAt"
     LIMIT 10`;
   res.json(scores);
+});
+
+// The built client, with every other GET falling back to its index page.
+app.use(express.static(clientDir));
+app.get("/{*splat}", (req, res) => {
+  res.sendFile("index.html", { root: clientDir });
 });
 
 export default app;
