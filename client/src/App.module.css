@@ -8,3 +8,38 @@
   width: 100%;
   height: auto;
 }
+
+.sceneArea {
+  position: relative;
+}
+
+.targetingBox {
+  position: absolute;
+}
+
+.box {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  border: 3px solid red;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.menu {
+  position: absolute;
+  left: 30px;
+  top: -24px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: white;
+  border: 1px solid #ccc;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.menu li {
+  padding: 4px 12px;
+}
