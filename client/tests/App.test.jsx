@@ -84,8 +84,11 @@ test("clicking outside the Targeting box and menu closes both", async () => {
   expect(screen.queryByRole("menu")).toBeNull();
 });
 
-async function guess(reply, name) {
-  const { scene, fetch } = await startGame({ "/games/abc/guesses": reply });
+async function guess(reply, name, replies = {}) {
+  const { scene, fetch } = await startGame({
+    "/games/abc/guesses": reply,
+    ...replies,
+  });
   vi.spyOn(scene, "getBoundingClientRect").mockReturnValue({
     left: 10,
     top: 20,
@@ -228,4 +231,102 @@ test("the Scene can't be clicked once the Game is finished", async () => {
   });
 
   expect(screen.queryByLabelText("Targeting box")).toBeNull();
+});
+
+async function finish(replies = {}) {
+  const fetch = await guess(
+    { body: { correct: true, hitBox, finished: true, timeMs: 61234 } },
+    "Waldo",
+    replies
+  );
+  await screen.findByRole("status");
+  return fetch;
+}
+
+function saveName(name) {
+  fireEvent.change(screen.getByRole("textbox", { name: "Name" }), {
+    target: { value: name },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+}
+
+const leaderboard = [
+  { name: "Ada", timeMs: 45000 },
+  { name: "Grace", timeMs: 61234 },
+];
+
+test("finishing shows a name form that saves the name for the Game", async () => {
+  const fetch = await finish({
+    "/games/abc/name": { status: 204 },
+    "/scenes/1/leaderboard": { body: leaderboard },
+  });
+
+  saveName("Grace");
+
+  await screen.findByRole("heading", { name: "Leaderboard" });
+  const [url, options] = fetch.mock.calls[2];
+  expect(url).toBe("/games/abc/name");
+  expect(options.method).toBe("PUT");
+  expect(JSON.parse(options.body)).toEqual({ name: "Grace" });
+});
+
+test("a name that's rejected as invalid shows a message about its length", async () => {
+  await finish({ "/games/abc/name": { status: 400 } });
+
+  saveName("");
+
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "Your name must be 1–20 characters."
+  );
+  screen.getByRole("textbox", { name: "Name" });
+  expect(screen.queryByRole("heading", { name: "Leaderboard" })).toBeNull();
+});
+
+test("after saving, the Scene's Leaderboard is shown in the server's order", async () => {
+  const fetch = await finish({
+    "/games/abc/name": { status: 204 },
+    "/scenes/1/leaderboard": { body: leaderboard },
+  });
+
+  saveName("Grace");
+
+  const heading = await screen.findByRole("heading", { name: "Leaderboard" });
+  const list = heading.nextElementSibling;
+  const entries = within(list)
+    .getAllByRole("listitem")
+    .map((li) => li.textContent);
+  expect(entries).toEqual(["Ada 45.0s", "Grace 61.2s"]);
+  expect(fetch.mock.calls[3][0]).toBe("/scenes/1/leaderboard");
+  expect(screen.queryByRole("textbox", { name: "Name" })).toBeNull();
+});
+
+test("Play again returns to the Start button with a fresh state", async () => {
+  await finish({
+    "/games/abc/name": { status: 204 },
+    "/scenes/1/leaderboard": { body: leaderboard },
+  });
+  saveName("Grace");
+  await screen.findByRole("heading", { name: "Leaderboard" });
+
+  fireEvent.click(screen.getByRole("button", { name: "Play again" }));
+
+  fireEvent.click(screen.getByRole("button", { name: "Start" }));
+  await screen.findByRole("img", { name: "Scene" });
+  expect(screen.getByRole("timer").textContent).toBe("0.0s");
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(screen.queryByLabelText("Found Waldo")).toBeNull();
+  expect(screen.queryByRole("heading", { name: "Leaderboard" })).toBeNull();
+  expect(screen.queryByRole("textbox", { name: "Name" })).toBeNull();
+});
+
+test("a name that was already saved still shows the Leaderboard", async () => {
+  await finish({
+    "/games/abc/name": { status: 409 },
+    "/scenes/1/leaderboard": { body: leaderboard },
+  });
+
+  saveName("Grace");
+
+  await screen.findByRole("heading", { name: "Leaderboard" });
+  expect(screen.queryByRole("alert")).toBeNull();
 });

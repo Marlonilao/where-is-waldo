@@ -14,6 +14,8 @@ export default function App() {
   const [found, setFound] = useState({});
   const [elapsed, setElapsed] = useState(0);
   const [timeMs, setTimeMs] = useState(null);
+  const [nameError, setNameError] = useState(null);
+  const [leaderboard, setLeaderboard] = useState(null);
   const sceneRef = useRef(null);
 
   useEffect(() => {
@@ -83,6 +85,40 @@ export default function App() {
     setTargetingBox(null);
   }
 
+  async function saveName(event) {
+    event.preventDefault();
+    const name = event.currentTarget.elements.name.value;
+    try {
+      const res = await fetch(`/games/${game.id}/name`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (res.status === 400) {
+        return setNameError("Your name must be 1–20 characters.");
+      }
+      // 409 means the name was already saved, e.g. on a retry.
+      if (!res.ok && res.status !== 409) {
+        throw new Error(`Saving name failed: ${res.status}`);
+      }
+      const board = await fetch(`/scenes/${sceneId}/leaderboard`);
+      if (!board.ok) throw new Error(`Leaderboard failed: ${board.status}`);
+      setLeaderboard(await board.json());
+    } catch {
+      setNameError("Something went wrong. Please try again.");
+    }
+  }
+
+  function playAgain() {
+    setGame(null);
+    setMessage(null);
+    setFound({});
+    setElapsed(0);
+    setTimeMs(null);
+    setNameError(null);
+    setLeaderboard(null);
+  }
+
   return (
     <main className={styles.app}>
       <h1>Where's Waldo?</h1>
@@ -95,6 +131,29 @@ export default function App() {
             ))}
           </ul>
           {message && <p role="status">{message}</p>}
+          {leaderboard ? (
+            <>
+              <h2>Leaderboard</h2>
+              <ol>
+                {leaderboard.map((score, i) => (
+                  <li key={i}>
+                    {score.name} {formatTime(score.timeMs)}
+                  </li>
+                ))}
+              </ol>
+              <button onClick={playAgain}>Play again</button>
+            </>
+          ) : (
+            timeMs !== null && (
+              <form onSubmit={saveName}>
+                <label>
+                  Name <input name="name" />
+                </label>
+                <button>Save</button>
+                {nameError && <p role="alert">{nameError}</p>}
+              </form>
+            )
+          )}
           <div className={styles.sceneArea} ref={sceneRef}>
             <img
               className={styles.scene}
